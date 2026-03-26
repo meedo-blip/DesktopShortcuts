@@ -11,8 +11,53 @@
 #include <QProcess>
 #include <QFileDialog>
 #include <QDir>
+#include <iostream>
 
 int main(int argc, char *argv[]) {
+    // Check for command line arguments
+    if (argc >= 3) {
+        QString execPath = QString::fromUtf8(argv[1]);
+        QString name = QString::fromUtf8(argv[2]);
+        QString iconPath = (argc >= 4) ? QString::fromUtf8(argv[3]) : QString();
+
+        if (execPath.isEmpty() || name.isEmpty()) {
+            std::cerr << "Usage: " << argv[0] << " <executable_path> <shortcut_name> [icon_path]" << std::endl;
+            return 1;
+        }
+
+        QString desktopPath = QDir::homePath() + "/Desktop/";
+        QString desktopFile = desktopPath + name + ".desktop";
+
+        QFile file(desktopFile);
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            std::cerr << "Error: Could not create desktop file" << std::endl;
+            return 1;
+        }
+
+        QTextStream out(&file);
+        out << "[Desktop Entry]\n";
+        out << "Version=1.0\n";
+        out << "Type=Application\n";
+        out << "Name=" << name << "\n";
+        out << "Exec=" << execPath << "\n";
+        if (!iconPath.isEmpty()) {
+            out << "Icon=" << iconPath << "\n";
+        }
+        out << "Terminal=false\n";
+        out << "Categories=Utility;\n";
+
+        file.close();
+
+        // Make file executable
+        QProcess process;
+        process.start("chmod", QStringList() << "+x" << desktopFile);
+        process.waitForFinished();
+
+        std::cout << "Desktop shortcut created at: " << desktopFile.toStdString() << std::endl;
+        return 0;
+    }
+
+    // GUI mode
     QApplication app(argc, argv);
 
     QWidget window;
@@ -89,7 +134,6 @@ int main(int argc, char *argv[]) {
         process.waitForFinished();
 
         QMessageBox::information(&window, "Success", "Desktop shortcut created at: " + desktopFile);
-        
     });
 
     QObject::connect(execButton, &QPushButton::clicked, [&]() {
